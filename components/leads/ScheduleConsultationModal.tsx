@@ -151,7 +151,7 @@ export function ScheduleConsultationModal({
                   <Clock className="h-4 w-4" />
                   Time
                 </label>
-                <Select value={selectedTime} onValueChange={setSelectedTime} required>
+                <Select value={selectedTime} onValueChange={(v) => v && setSelectedTime(v)} required>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select time" />
                   </SelectTrigger>
@@ -168,7 +168,7 @@ export function ScheduleConsultationModal({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Duration</label>
-              <Select value={duration} onValueChange={setDuration}>
+              <Select value={duration} onValueChange={(v) => v && setDuration(v as '15' | '30' | '45' | '60')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
