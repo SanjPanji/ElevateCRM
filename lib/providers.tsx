@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
+import { UserProvider } from '@/hooks/useCurrentUser';
 
 let queryClient: QueryClient | null = null;
 
@@ -24,5 +25,9 @@ function getQueryClient() {
 export function Providers({ children }: { children: ReactNode }) {
   const client = getQueryClient();
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <UserProvider>{children}</UserProvider>
+    </QueryClientProvider>
+  );
 }

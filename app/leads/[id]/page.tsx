@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useLead } from '@/hooks/useLeads';
 import { useRealtimeLead, useRealtimeNotes } from '@/hooks/useRealtime';
@@ -10,12 +11,13 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
-export default function LeadDetailsPage({ params }: { params: { id: string } }) {
-  const { data: lead, isLoading } = useLead(params.id);
+export default function LeadDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { data: lead, isLoading } = useLead(id);
 
   // Set up realtime subscriptions
-  useRealtimeLead(params.id);
-  useRealtimeNotes(params.id);
+  useRealtimeLead(id);
+  useRealtimeNotes(id);
 
   if (isLoading) {
     return (

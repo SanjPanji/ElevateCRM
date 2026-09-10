@@ -5,6 +5,8 @@ interface GetLeadsOptions {
   meetingStatus?: MeetingStatus;
   assignedTo?: string;
   search?: string;
+  budget?: string;
+  dateRange?: string;
   limit?: number;
   offset?: number;
 }
@@ -19,7 +21,8 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
       .select(
         `
         *,
-        assigned_employee:profiles(id, name, username, role)
+        assigned_employee:profiles!left(id, name, username, role),
+        appointments:appointments(id, start_time, end_time, status, google_meet_url, google_event_id)
       `
       )
       .order('created_at', { ascending: false });
@@ -48,12 +51,28 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('Failed to fetch leads:', error);
+      throw error;
+    }
 
-    return (data || []) as LeadWithDetails[];
+    // Get the next upcoming appointment for each lead
+    const leadsWithMeetings = (data || []).map((lead) => {
+      const appointments = lead.appointments || [];
+      const upcomingAppointment = appointments
+        .filter((apt: any) => apt.status === 'scheduled' && new Date(apt.start_time) >= new Date())
+        .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+
+      return {
+        ...lead,
+        nextAppointment: upcomingAppointment || null,
+      };
+    });
+
+    return leadsWithMeetings as LeadWithDetails[];
   } catch (error) {
     console.error('Failed to fetch leads:', error);
-    return [];
+    throw error;
   }
 };
 
@@ -62,21 +81,46 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
  */
 export const getLead = async (leadId: string) => {
   try {
-    const { data, error } = await supabase
+    // First get the lead
+    const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select(
         `
         *,
-        assigned_employee:profiles(id, name, username, role, is_active),
-        notes:notes(*, author:profiles(id, name, username, avatar_url))
+        assigned_employee:profiles(id, name, username, role, is_active)
       `
       )
       .eq('id', leadId)
       .single();
 
-    if (error) throw error;
+    if (leadError) {
+      console.error('Lead query error:', leadError);
+      throw leadError;
+    }
 
-    return data as LeadWithDetails;
+    if (!lead) {
+      return null;
+    }
+
+    // Then get notes separately with LEFT JOIN
+    const { data: notes, error: notesError } = await supabase
+      .from('notes')
+      .select(`
+        *,
+        author:profiles(id, name, username, avatar_url)
+      `)
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false });
+
+    if (notesError) {
+      console.error('Notes query error:', notesError);
+      // Continue without notes
+    }
+
+    return {
+      ...lead,
+      notes: notes || []
+    } as LeadWithDetails;
   } catch (error) {
     console.error('Failed to fetch lead:', error);
     return null;

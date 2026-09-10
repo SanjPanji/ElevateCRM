@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 
@@ -7,11 +7,12 @@ import { supabase } from '@/lib/supabase/client';
  */
 export const useRealtimeLeads = (userId: string | undefined) => {
   const queryClient = useQueryClient();
+  const invalidateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!userId) return;
 
-    // Subscribe to leads changes
+    // Subscribe to leads changes for leads assigned to this user
     const subscription = supabase
       .channel(`public:leads:assigned_to=eq.${userId}`)
       .on(
@@ -23,14 +24,22 @@ export const useRealtimeLeads = (userId: string | undefined) => {
           filter: `assigned_to=eq.${userId}`,
         },
         (payload) => {
-          // Invalidate leads query to refetch
-          queryClient.invalidateQueries({ queryKey: ['leads'] });
+          // Debounce invalidation to prevent rapid refetches
+          if (invalidateTimeoutRef.current) {
+            clearTimeout(invalidateTimeoutRef.current);
+          }
+          invalidateTimeoutRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+          }, 300);
         }
       )
       .subscribe();
 
     return () => {
       subscription.unsubscribe();
+      if (invalidateTimeoutRef.current) {
+        clearTimeout(invalidateTimeoutRef.current);
+      }
     };
   }, [userId, queryClient]);
 };

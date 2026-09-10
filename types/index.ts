@@ -91,6 +91,7 @@ export interface LeadWithDetails extends Lead {
   answers?: LeadAnswer[];
   notes?: Note[];
   appointments?: Appointment[];
+  nextAppointment?: Appointment | null;
 }
 
 /**

@@ -58,8 +58,17 @@ export function Sidebar() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="px-6 py-8 border-b border-slate-800">
-            <h1 className="text-2xl font-bold">ELEVATE</h1>
-            <p className="text-xs text-slate-400 mt-1">Internal CRM</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white">Elevate.Interns</h1>
+                <p className="text-xs text-slate-400">CRM System</p>
+              </div>
+            </div>
           </div>
 
           {/* Navigation */}

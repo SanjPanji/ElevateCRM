@@ -21,6 +21,8 @@ interface UseLeadsOptions {
   meetingStatus?: MeetingStatus;
   assignedTo?: string;
   search?: string;
+  budget?: string;
+  dateRange?: string;
 }
 
 /**
