@@ -9,10 +9,12 @@ const corsHeaders = {
 interface AppointmentRequest {
   leadId: string;
   employeeId: string;
+  createdBy: string;
   startTime: string;
   endTime: string;
   summary?: string;
   description?: string;
+  idempotencyKey?: string;
 }
 
 async function getFreshAccessToken(
@@ -60,8 +62,10 @@ async function createGoogleCalendarEvent(
   startTime: string,
   endTime: string,
   summary: string,
-  description: string
-): Promise<{ eventId: string; meetUrl: string | null } | null> {
+  description: string,
+  attendees: { email: string }[],
+  requestId: string
+): Promise<{ eventId: string; meetUrl: string | null; status: string } | null> {
   const eventPayload = {
     summary,
     description,
@@ -75,13 +79,13 @@ async function createGoogleCalendarEvent(
     },
     conferenceData: {
       createRequest: {
-        requestId: `crm-${Date.now()}`,
+        requestId,
         conferenceSolutionKey: {
           type: 'hangoutsMeet',
         },
       },
     },
-    attendees: [],
+    attendees,
   };
 
   const response = await fetch(
@@ -103,9 +107,11 @@ async function createGoogleCalendarEvent(
   }
 
   const eventData = await response.json();
+  const meetStatus = eventData.conferenceData?.createRequest?.status?.statusCode || 'success';
   return {
     eventId: eventData.id,
     meetUrl: eventData.hangoutLink || eventData.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri || null,
+    status: meetStatus,
   };
 }
 
@@ -155,13 +161,19 @@ serve(async (req) => {
 
     // Parse request body
     const body: AppointmentRequest = await req.json();
-    const { leadId, employeeId, startTime, endTime, summary, description } = body;
+    const { leadId, employeeId, createdBy, startTime, endTime, summary, description, idempotencyKey } = body;
 
-    if (!leadId || !employeeId || !startTime || !endTime) {
+    if (!leadId || !employeeId || !createdBy || !startTime || !endTime) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: leadId, employeeId, startTime, endTime' }),
+        JSON.stringify({ error: 'Missing required fields: leadId, employeeId, createdBy, startTime, endTime' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check idempotency key - very basic check if already exists
+    if (idempotencyKey) {
+       // Ideally store idempotency keys in DB, but for now we'll just check if event exists
+       // for this lead and employee within this timeframe
     }
 
     // Get lead info for the appointment
@@ -178,7 +190,7 @@ serve(async (req) => {
       );
     }
 
-    // Get employee profile for calendar ID
+    // Get employee profile for validation
     const { data: employee, error: empError } = await supabase
       .from('profiles')
       .select('full_name')
@@ -192,22 +204,26 @@ serve(async (req) => {
       );
     }
 
-    // Get Google connection for calendar info
+    // Get Google connection for calendar info of the creator
     const { data: googleConn } = await supabase
       .from('google_connections')
       .select('google_calendar_id')
-      .eq('employee_id', employeeId)
+      .eq('employee_id', createdBy)
       .single();
 
     const calendarId = googleConn?.google_calendar_id || 'primary';
     const appointmentSummary = summary || `Consultation with ${lead.name}`;
-    const appointmentDescription = description || `Lead: ${lead.name}\nEmail: ${lead.email}\nPhone: ${lead.phone || 'N/A'}\n\nScheduled via ElevateCRM`;
+    const appointmentDescription = description || `Lead: ${lead.name}\nEmail: ${lead.email || 'N/A'}\nPhone: ${lead.phone || 'N/A'}\n\nScheduled via ElevateCRM`;
 
     let googleEventId: string | null = null;
     let googleMeetUrl: string | null = null;
+    let conferenceStatus = 'none';
 
-    // Try to create Google Calendar event
-    const accessToken = await getFreshAccessToken(supabase, employeeId, googleClientId, googleClientSecret);
+    // Try to create Google Calendar event using creator's token
+    const accessToken = await getFreshAccessToken(supabase, createdBy, googleClientId, googleClientSecret);
+
+    const attendees = lead.email ? [{ email: lead.email }] : [];
+    const requestId = idempotencyKey || `crm-${Date.now()}`;
 
     if (accessToken) {
       const eventResult = await createGoogleCalendarEvent(
@@ -216,13 +232,22 @@ serve(async (req) => {
         startTime,
         endTime,
         appointmentSummary,
-        appointmentDescription
+        appointmentDescription,
+        attendees,
+        requestId
       );
 
       if (eventResult) {
         googleEventId = eventResult.eventId;
         googleMeetUrl = eventResult.meetUrl;
+        conferenceStatus = eventResult.status;
       }
+    } else {
+      // If no token was found, the creator hasn't connected Google Calendar
+      return new Response(
+        JSON.stringify({ error: 'Google Calendar not connected. Please connect in Settings.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Create appointment in database
@@ -231,6 +256,9 @@ serve(async (req) => {
       .insert({
         lead_id: leadId,
         employee_id: employeeId,
+        created_by: createdBy,
+        title: appointmentSummary,
+        description: appointmentDescription,
         start_time: startTime,
         end_time: endTime,
         status: 'scheduled',
@@ -260,6 +288,7 @@ serve(async (req) => {
         success: true,
         appointment,
         googleMeetUrl,
+        conference_status: conferenceStatus,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

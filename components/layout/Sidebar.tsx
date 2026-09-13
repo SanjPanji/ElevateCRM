@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   UserCog,
+  Video,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +24,7 @@ const navigationItems = [
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/employees', label: 'Employees', icon: UserCog },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/meetings', label: 'Meetings', icon: Video },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

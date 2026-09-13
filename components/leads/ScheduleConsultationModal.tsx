@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUpdateLeadMeeting } from '@/hooks/useLeads';
+import { useCreateAppointment } from '@/hooks/useLeads';
+import { useEmployees } from '@/hooks/useEmployees';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Calendar, Clock, User, Loader2, X } from 'lucide-react';
 
@@ -23,11 +24,14 @@ export function ScheduleConsultationModal({
   leadName,
 }: ScheduleConsultationModalProps) {
   const { user } = useCurrentUser();
+  const { data: employees } = useEmployees();
+  
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedConsultant, setSelectedConsultant] = useState<string>('');
   const [duration, setDuration] = useState<'15' | '30' | '45' | '60'>('30');
 
-  const { mutate: updateLeadMeeting, isPending: isUpdating } = useUpdateLeadMeeting();
+  const { mutate: createAppointment, isPending: isUpdating } = useCreateAppointment();
 
   // Generate time options (9AM to 6PM, 30 min increments)
   const timeOptions = Array.from({ length: 20 }, (_, i) => {
@@ -47,7 +51,7 @@ export function ScheduleConsultationModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime) return;
+    if (!selectedDate || !selectedTime || !selectedConsultant) return;
 
     // Parse time string like "2:30 PM"
     const timeMatch = selectedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -72,19 +76,31 @@ export function ScheduleConsultationModal({
     const endDate = new Date(startDate);
     endDate.setMinutes(startDate.getMinutes() + parseInt(duration));
 
-    updateLeadMeeting(
+    if (!user?.id) {
+      alert('You must be logged in to schedule a meeting');
+      return;
+    }
+
+    createAppointment(
       {
         leadId,
-        meetingStart: startDate.toISOString(),
-        meetingEnd: endDate.toISOString(),
-        status: 'scheduled',
+        employeeId: selectedConsultant,
+        createdBy: user.id,
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
+        summary: `Consultation with ${leadName}`,
       },
       {
         onSuccess: () => {
           onClose();
           setSelectedDate('');
           setSelectedTime('');
+          setSelectedConsultant('');
         },
+        onError: (error) => {
+          console.error('Failed to create appointment:', error);
+          alert('Failed to schedule meeting. Please try again.');
+        }
       }
     );
   };
@@ -129,6 +145,25 @@ export function ScheduleConsultationModal({
                 <Input value={leadName} disabled className="bg-muted" />
               </div>
             </Card>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Consultant
+              </label>
+              <Select value={selectedConsultant} onValueChange={(v) => v && setSelectedConsultant(v)} required>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select consultant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((emp) => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.full_name || emp.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -185,7 +220,7 @@ export function ScheduleConsultationModal({
             <div className="flex gap-2 pt-2">
               <Button
                 type="submit"
-                disabled={isUpdating || !selectedDate || !selectedTime}
+                disabled={isUpdating || !selectedDate || !selectedTime || !selectedConsultant}
                 className="flex-1"
               >
                 {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

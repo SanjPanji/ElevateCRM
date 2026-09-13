@@ -6,16 +6,19 @@ const FUNCTIONS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL + '/functions/v1';
 interface CreateAppointmentParams {
   leadId: string;
   employeeId: string;
+  createdBy: string;
   startTime: string;
   endTime: string;
   summary?: string;
   description?: string;
+  idempotencyKey?: string;
 }
 
 interface CreateAppointmentResponse {
   success: boolean;
   appointment: Appointment;
   googleMeetUrl: string | null;
+  conference_status?: string;
 }
 
 /**
@@ -48,6 +51,36 @@ export const createAppointment = async (
     return await response.json();
   } catch (error) {
     console.error('Failed to create appointment:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get appointment details (includes refreshing pending Google Meet URL)
+ */
+export const getAppointment = async (appointmentId: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await fetch(`${FUNCTIONS_URL}/get-appointment?id=${appointmentId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch appointment');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch appointment:', error);
     throw error;
   }
 };

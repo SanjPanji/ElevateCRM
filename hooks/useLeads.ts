@@ -144,6 +144,7 @@ export const useCreateAppointment = () => {
     mutationFn: ({
       leadId,
       employeeId,
+      createdBy,
       startTime,
       endTime,
       summary,
@@ -151,6 +152,7 @@ export const useCreateAppointment = () => {
     }: {
       leadId: string;
       employeeId: string;
+      createdBy: string;
       startTime: string;
       endTime: string;
       summary?: string;
@@ -159,6 +161,7 @@ export const useCreateAppointment = () => {
       createAppointment({
         leadId,
         employeeId,
+        createdBy,
         startTime,
         endTime,
         summary,
