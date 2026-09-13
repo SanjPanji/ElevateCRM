@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { Loader2, X, User, Phone, GraduationCap, Target, Wallet, History, CheckCircle, Save } from 'lucide-react';
 import { useCreateLead } from '@/hooks/useLeads';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import type { Resolver } from 'react-hook-form';
+import type { Lead } from '@/types';
 
 const leadFormSchema = z.object({
   name: z.string().min(1, 'Имя обязательно'),
@@ -42,9 +44,10 @@ interface LeadFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onError?: () => void;
 }
 
-export function LeadFormModal({ isOpen, onClose, onSuccess }: LeadFormModalProps) {
+export function LeadFormModal({ isOpen, onClose, onSuccess, onError }: LeadFormModalProps) {
   const { user } = useCurrentUser();
   const { mutate: createLead, isPending: isCreating } = useCreateLead();
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
@@ -56,18 +59,17 @@ export function LeadFormModal({ isOpen, onClose, onSuccess }: LeadFormModalProps
     watch,
     setValue,
   } = useForm<LeadFormData>({
-    resolver: zodResolver(leadFormSchema),
+    resolver: zodResolver(leadFormSchema) as Resolver<LeadFormData>,
     defaultValues: {
       income_currency: 'KZT',
     },
   });
-
   const incomeCurrency = watch('income_currency');
 
   const handleSubmitForm = async (data: LeadFormData) => {
     if (!user?.id) return;
 
-    const leadData = {
+    const leadData: Partial<Lead> = {
       name: data.name,
       phone: data.phone,
       age: data.age ? parseInt(data.age, 10) : null,
@@ -100,6 +102,7 @@ export function LeadFormModal({ isOpen, onClose, onSuccess }: LeadFormModalProps
       },
       onError: (error) => {
         console.error('Failed to create lead:', error);
+        onError?.();
       },
     });
   };

@@ -12,12 +12,18 @@ import { Toast, useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
+import type { MeetingStatus } from '@/types';
 
 const PAGE_SIZES = [10, 25, 50];
 
 export default function LeadsPage() {
   const { user, loading: userLoading } = useCurrentUser();
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    search: string;
+    status: MeetingStatus | '';
+    budget: string;
+    dateRange: string;
+  }>({
     search: '',
     status: '',
     budget: '',
@@ -32,12 +38,7 @@ export default function LeadsPage() {
   const isManagerOrAdmin = userRole === 'manager' || userRole === 'admin';
 
   // Fetch leads with pagination
-  const {
-    data: leadsData,
-    pagination,
-    isLoading,
-    error,
-  } = useLeads({
+  const { data: leadsData, isLoading, error } = useLeads({
     assignedTo: isManagerOrAdmin ? undefined : user?.id,
     search: filters.search,
     meetingStatus: filters.status || undefined,
@@ -47,7 +48,7 @@ export default function LeadsPage() {
     pageSize,
   });
 
-  // Realtime subscription
+  const pagination = leadsData?.pagination;
   useRealtimeLeads(user?.id);
 
   const handleFilterChange = (key: string, value: string) => {
@@ -74,7 +75,7 @@ export default function LeadsPage() {
     showError('Не удалось создать лид');
   };
 
-  const leads = leadsData || [];
+  const leads = leadsData?.data || [];
   const total = pagination?.total || 0;
   const totalPages = pagination?.totalPages || 1;
 
@@ -124,6 +125,9 @@ export default function LeadsPage() {
           <LeadTable
             leads={leads}
             isLoading={isLoading || userLoading}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
             page={page}
             totalPages={totalPages}
             pageSize={pageSize}
@@ -137,7 +141,6 @@ export default function LeadsPage() {
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSuccess={handleSuccess}
-            onError={handleError}
           />
 
           {/* Toast notifications */}
