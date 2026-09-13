@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getDashboardStats, getLeadPipeline, getTodaysAppointments } from '@/lib/api/dashboard';
+import { getDashboardStats, getLeadPipeline, getTodaysAppointments, getRecentActivity } from '@/lib/api/dashboard';
 
 /**
  * Fetch dashboard statistics
@@ -32,6 +32,18 @@ export const useTodaysAppointments = (userId: string | undefined) => {
   return useQuery({
     queryKey: ['dashboard', 'appointments', 'today', userId],
     queryFn: () => getTodaysAppointments(userId!),
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+/**
+ * Fetch recent activity (latest updated leads)
+ */
+export const useRecentActivity = (userId: string | undefined, limit = 8) => {
+  return useQuery({
+    queryKey: ['dashboard', 'activity', userId, limit],
+    queryFn: () => getRecentActivity(userId!, limit),
     enabled: !!userId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

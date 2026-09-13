@@ -20,6 +20,13 @@ interface LeadTableProps {
   };
   onFilterChange: (key: string, value: string) => void;
   onClearFilters: () => void;
+  // Pagination props
+  page?: number;
+  totalPages?: number;
+  pageSize?: number;
+  pageSizes?: number[];
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 const statuses = [
@@ -108,6 +115,12 @@ export function LeadTable({
   filters,
   onFilterChange,
   onClearFilters,
+  page = 1,
+  totalPages = 1,
+  pageSize = 25,
+  pageSizes = [10, 25, 50],
+  onPageChange,
+  onPageSizeChange,
 }: LeadTableProps) {
   const hasActiveFilters =
     filters.search ||
@@ -321,6 +334,71 @@ export function LeadTable({
           )}
         </tbody>
       </table>
+
+      {/* Pagination footer */}
+      {(totalPages > 1 || pageSize !== 25) && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
+          {/* Page size selector */}
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <span>Show</span>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+              className="border border-slate-200 rounded-md px-2 py-1 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[10, 25, 50].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+            <span>per page</span>
+          </div>
+
+          {/* Page navigation */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange?.(page - 1)}
+              disabled={page <= 1}
+              className="px-3 py-1.5 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Prev
+            </button>
+
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => onPageChange?.(pageNum)}
+                  className={`w-8 h-8 text-sm rounded-md transition-colors ${
+                    pageNum === page
+                      ? 'bg-blue-600 text-white font-medium'
+                      : 'border border-slate-200 text-slate-600 hover:bg-white'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => onPageChange?.(page + 1)}
+              disabled={page >= totalPages}
+              className="px-3 py-1.5 text-sm rounded-md border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

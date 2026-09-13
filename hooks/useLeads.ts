@@ -6,6 +6,7 @@ import {
   updateLeadMeeting,
   assignLead,
   updateConsultantNotes,
+  createLead,
 } from '@/lib/api/leads';
 import {
   createAppointment,
@@ -15,7 +16,7 @@ import {
   cancelAppointment,
   rescheduleAppointment,
 } from '@/lib/api/appointments';
-import type { MeetingStatus } from '@/types';
+import type { MeetingStatus, Lead } from '@/types';
 
 interface UseLeadsOptions {
   meetingStatus?: MeetingStatus;
@@ -23,16 +24,32 @@ interface UseLeadsOptions {
   search?: string;
   budget?: string;
   dateRange?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 /**
- * Fetch multiple leads
+ * Fetch multiple leads with pagination
  */
 export const useLeads = (options: UseLeadsOptions = {}) => {
   return useQuery({
     queryKey: ['leads', options],
     queryFn: () => getLeads(options),
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+/**
+ * Create lead mutation
+ */
+export const useCreateLead = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (leadData: Partial<Lead>) => createLead(leadData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
   });
 };
 

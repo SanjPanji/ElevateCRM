@@ -25,3 +25,8 @@ pop3_port = 54326
 
 [functions]
 # Edge functions configuration
+[functions.google-auth]
+verify_jwt = true
+
+[functions.google-callback]
+verify_jwt = false

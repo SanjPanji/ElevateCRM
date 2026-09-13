@@ -7,15 +7,38 @@ interface GetLeadsOptions {
   search?: string;
   budget?: string;
   dateRange?: string;
-  limit?: number;
-  offset?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+interface GetLeadsResult {
+  data: LeadWithDetails[];
+  pagination: Pagination;
 }
 
 /**
- * Get leads with filters
+ * Get leads with filters and pagination
  */
-export const getLeads = async (options: GetLeadsOptions = {}) => {
+export const getLeads = async (options: GetLeadsOptions = {}): Promise<GetLeadsResult> => {
+  const {
+    meetingStatus,
+    assignedTo,
+    search,
+    budget,
+    dateRange,
+    page = 1,
+    pageSize = 25,
+  } = options;
+
   try {
+    // Build base query with count
     let query = supabase
       .from('leads')
       .select(
@@ -27,29 +50,26 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
       )
       .order('created_at', { ascending: false });
 
-    if (options.meetingStatus) {
-      query = query.eq('meeting_status', options.meetingStatus);
+    if (meetingStatus) {
+      query = query.eq('meeting_status', meetingStatus);
     }
 
-    if (options.assignedTo) {
-      query = query.eq('assigned_to', options.assignedTo);
+    if (assignedTo) {
+      query = query.eq('assigned_to', assignedTo);
     }
 
-    if (options.search) {
+    if (search) {
       query = query.or(
-        `name.ilike.%${options.search}%,phone.ilike.%${options.search}%,university.ilike.%${options.search}%`
+        `name.ilike.%${search}%,phone.ilike.%${options.search}%,university.ilike.%${options.search}%`
       );
     }
 
-    if (options.limit) {
-      query = query.limit(options.limit);
-    }
+    // Apply pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
 
-    if (options.offset) {
-      query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
-    }
-
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       console.error('Failed to fetch leads:', error);
@@ -57,7 +77,7 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
     }
 
     // Get the next upcoming appointment for each lead
-    const leadsWithMeetings = (data || []).map((lead) => {
+    const leadsWithMeetings = (data || []).map((lead: any) => {
       const appointments = lead.appointments || [];
       const upcomingAppointment = appointments
         .filter((apt: any) => apt.status === 'scheduled' && new Date(apt.start_time) >= new Date())
@@ -69,7 +89,18 @@ export const getLeads = async (options: GetLeadsOptions = {}) => {
       };
     });
 
-    return leadsWithMeetings as LeadWithDetails[];
+    const total = count || leadsWithMeetings.length;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      data: leadsWithMeetings as LeadWithDetails[],
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, totalPages),
+      },
+    };
   } catch (error) {
     console.error('Failed to fetch leads:', error);
     throw error;
@@ -217,6 +248,32 @@ export const updateConsultantNotes = async (leadId: string, notes: string) => {
     return data as Lead;
   } catch (error) {
     console.error('Failed to update consultant notes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new lead
+ */
+export const createLead = async (leadData: Partial<Lead>) => {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .insert({
+        ...leadData,
+        meeting_status: 'not_scheduled',
+        source: 'manual',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data as Lead;
+  } catch (error) {
+    console.error('Failed to create lead:', error);
     throw error;
   }
 };

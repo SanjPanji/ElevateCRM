@@ -126,3 +126,34 @@ export const getTodaysAppointments = async (userId: string) => {
     return [];
   }
 };
+
+/**
+ * Get recent activity: latest leads ordered by updated_at
+ */
+export const getRecentActivity = async (userId: string, limit = 8) => {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select(
+        `
+        id,
+        name,
+        phone,
+        meeting_status,
+        created_at,
+        updated_at,
+        assigned_employee:profiles!left(id, name, username)
+      `
+      )
+      .eq('assigned_to', userId)
+      .order('updated_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return (data as any[]) || [];
+  } catch (error) {
+    console.error('Failed to fetch recent activity:', error);
+    return [];
+  }
+};
