@@ -158,7 +158,7 @@ export function ScheduleConsultationModal({
                 <SelectContent>
                   {employees?.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
-                      {emp.full_name || emp.email}
+                      {emp.name || emp.username}
                     </SelectItem>
                   ))}
                 </SelectContent>
