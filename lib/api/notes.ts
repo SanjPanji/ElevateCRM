@@ -11,7 +11,7 @@ export const getNotes = async (leadId: string) => {
       .select(
         `
         *,
-        author:profiles(id, name, username, avatar_url)
+        author:profiles(id, name, username)
       `
       )
       .eq('lead_id', leadId)
@@ -41,7 +41,7 @@ export const createNote = async (leadId: string, employeeId: string, text: strin
       .select(
         `
         *,
-        author:profiles(id, name, username, avatar_url)
+        author:profiles(id, name, username)
       `
       )
       .single();

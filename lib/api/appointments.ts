@@ -95,7 +95,7 @@ export const getAppointmentsByLead = async (leadId: string): Promise<Appointment
       .select(
         `
         *,
-        employee:profiles(id, full_name, email, avatar_url)
+        employee:profiles(id, name, username)
       `
       )
       .eq('lead_id', leadId)
@@ -124,8 +124,8 @@ export const getAppointmentsByEmployee = async (
       .select(
         `
         *,
-        lead:leads(id, name, email, phone),
-        employee:profiles(id, full_name, email, avatar_url)
+        lead:leads(id, name, phone),
+        employee:profiles(id, name, username)
       `
       )
       .eq('employee_id', employeeId)

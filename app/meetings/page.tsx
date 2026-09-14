@@ -120,10 +120,10 @@ export default function MeetingsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {apt.employee?.full_name || apt.employee?.email || 'Unknown'}
+                      {apt.employee?.name || apt.employee?.username || 'Unknown'}
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {apt.creator?.full_name || apt.creator?.email || 'Unknown'}
+                      {apt.creator?.name || apt.creator?.username || 'Unknown'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${

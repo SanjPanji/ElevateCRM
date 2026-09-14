@@ -9,9 +9,9 @@ const getAppointments = async () => {
     .from('appointments')
     .select(`
       *,
-      lead:leads(id, name, phone, email),
-      employee:profiles!appointments_employee_id_fkey(id, full_name, email),
-      creator:profiles!appointments_created_by_fkey(id, full_name, email)
+      lead:leads(id, name, phone),
+      employee:profiles!appointments_employee_id_fkey(id, name, username),
+      creator:profiles!appointments_created_by_fkey(id, name, username)
     `)
     .order('start_time', { ascending: false });
 

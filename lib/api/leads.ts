@@ -138,7 +138,7 @@ export const getLead = async (leadId: string) => {
       .from('notes')
       .select(`
         *,
-        author:profiles(id, name, username, avatar_url)
+        author:profiles(id, name, username)
       `)
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false });

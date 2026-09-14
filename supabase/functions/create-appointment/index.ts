@@ -179,7 +179,7 @@ serve(async (req) => {
     // Get lead info for the appointment
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('name, email, phone')
+      .select('name, phone')
       .eq('id', leadId)
       .single();
 
@@ -193,7 +193,7 @@ serve(async (req) => {
     // Get employee profile for validation
     const { data: employee, error: empError } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('name')
       .eq('id', employeeId)
       .single();
 
@@ -213,7 +213,7 @@ serve(async (req) => {
 
     const calendarId = googleConn?.google_calendar_id || 'primary';
     const appointmentSummary = summary || `Consultation with ${lead.name}`;
-    const appointmentDescription = description || `Lead: ${lead.name}\nEmail: ${lead.email || 'N/A'}\nPhone: ${lead.phone || 'N/A'}\n\nScheduled via ElevateCRM`;
+    const appointmentDescription = description || `Lead: ${lead.name}\nPhone: ${lead.phone || 'N/A'}\n\nScheduled via ElevateCRM`;
 
     let googleEventId: string | null = null;
     let googleMeetUrl: string | null = null;
@@ -222,7 +222,7 @@ serve(async (req) => {
     // Try to create Google Calendar event using creator's token
     const accessToken = await getFreshAccessToken(supabase, createdBy, googleClientId, googleClientSecret);
 
-    const attendees = lead.email ? [{ email: lead.email }] : [];
+    const attendees = [];
     const requestId = idempotencyKey || `crm-${Date.now()}`;
 
     if (accessToken) {
